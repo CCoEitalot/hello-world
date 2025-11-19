@@ -7,11 +7,12 @@ trigger:
 variables:
   # *** ต้องตั้งค่าตัวแปรเหล่านี้ใน Azure DevOps Pipeline UI ***
   
-  # ชื่อ Connection Service ใน Azure DevOps ที่เชื่อมต่อกับ Azure Subscription
-  # ถ้าITALOT-DEVมีปัญหา ให้เปลี่ยนค่านี้เป็นชื่อ Service Connection ที่ถูกต้อง
-  azureSubscription: 'acr-lab-aca' 
+  # ชื่อ Service Connection หลัก (ชนิด: Azure Resource Manager)
+  # ต้องมีสิทธิ์ Contributor บน Resource Group 'lab-aca'
+  # *** IMPORTANT: เปลี่ยนกลับเป็นชื่อ Service Connection ชนิด AzureRM ที่ถูกต้อง ***
+  azureSubscription: 'ITALOT-DEV' 
   
-  # 1. ชื่อ Service Connection สำหรับ Docker Registry
+  # 1. ชื่อ Service Connection สำหรับ Docker Registry (ชนิด: Docker Registry)
   acrRegistryName: 'acr-lab-aca' 
   
   # 2. ACR Login Server Domain
@@ -45,7 +46,7 @@ stages:
       displayName: 'Build and push the image to ACR'
       inputs:
         command: buildAndPush
-        # Service Connection สำหรับ Docker Registry
+        # Service Connection สำหรับ Docker Registry (acr-lab-aca)
         containerRegistry: $(acrRegistryName) 
         repository: $(imageRepository)
         tags: |
@@ -53,7 +54,7 @@ stages:
           latest
         dockerfile: '$(Build.SourcesDirectory)/Dockerfile'
         buildContext: '$(Build.SourcesDirectory)'
-        # Service Connection สำหรับสิทธิ์ Azure ทั่วไป (ต้องมี Contributor)
+        # Service Connection สำหรับสิทธิ์ Azure ทั่วไป (AzureRM)
         azureSubscription: $(azureSubscription)
 
     - task: PublishPipelineArtifact@1
@@ -64,52 +65,52 @@ stages:
         contents: |
           $(imageRepository):$(imageTag)
           
-- stage: Deploy
-  displayName: 'Deploy to Azure Container Apps'
-  dependsOn: BuildAndPush
-  condition: succeeded()
-  jobs:
-  - deployment: DeployContainerApp
-    displayName: 'Deploy Container App'
-    environment: 'ACA-Deployment' 
-    pool:
-      name: Azure Pipelines 
-      vmImage: 'ubuntu-latest'
+# - stage: Deploy
+#   displayName: 'Deploy to Azure Container Apps'
+#   dependsOn: BuildAndPush
+#   condition: succeeded()
+#   jobs:
+#   - deployment: DeployContainerApp
+#     displayName: 'Deploy Container App'
+#     environment: 'ACA-Deployment' 
+#     pool:
+#       name: Azure Pipelines 
+#       vmImage: 'ubuntu-latest'
 
-    strategy:
-      runOnce:
-        deploy:
-          steps:
-          - task: DownloadPipelineArtifact@2
-            displayName: 'Download Image Tag Artifact'
-            inputs:
-              artifact: 'Manifest'
-              path: '$(Pipeline.Workspace)/Manifest'
+#     strategy:
+#       runOnce:
+#         deploy:
+#           steps:
+#           - task: DownloadPipelineArtifact@2
+#             displayName: 'Download Image Tag Artifact'
+#             inputs:
+#               artifact: 'Manifest'
+#               path: '$(Pipeline.Workspace)/Manifest'
 
-          - script: |
-              # อ่าน Image Path/Tag จาก Artifact
-              imageFullPath=$(cat $(Pipeline.Workspace)/Manifest/$(imageRepository):$(imageTag))
-              echo "##vso[task.setvariable variable=fullImageName]$imageFullPath"
-            displayName: 'Set Full Image Name Variable'
+#           - script: |
+#               # อ่าน Image Path/Tag จาก Artifact
+#               imageFullPath=$(cat $(Pipeline.Workspace)/Manifest/$(imageRepository):$(imageTag))
+#               echo "##vso[task.setvariable variable=fullImageName]$imageFullPath"
+#             displayName: 'Set Full Image Name Variable'
 
-          - task: AzureContainerApps@1
-            displayName: 'Deploy Azure Container App'
-            inputs:
-              # Service Connection สำหรับสิทธิ์ Azure ทั่วไป (ต้องมี Contributor)
-              azureSubscription: $(azureSubscription) 
-              resourceGroup: $(resourceGroup)
-              containerAppName: $(containerAppName)
+#           - task: AzureContainerApps@1
+#             displayName: 'Deploy Azure Container App'
+#             inputs:
+#               # Service Connection สำหรับสิทธิ์ Azure ทั่วไป (AzureRM)
+#               azureSubscription: $(azureSubscription) 
+#               resourceGroup: $(resourceGroup)
+#               containerAppName: $(containerAppName)
               
-              # Image Path ที่ถูกต้อง
-              imageToDeploy: '$(acrLoginServer)/$(imageRepository):$(imageTag)'
+#               # Image Path ที่ถูกต้อง
+#               imageToDeploy: '$(acrLoginServer)/$(imageRepository):$(imageTag)'
               
-              # ตั้งค่า Target Port
-              targetPort: $(containerAppTargetPort)
+#               # ตั้งค่า Target Port
+#               targetPort: $(containerAppTargetPort)
               
-              # ตั้งค่า Environment Variable ใน Container
-              environmentVariables: |
-                CONTAINER_APP_NAME: $(containerAppName)
+#               # ตั้งค่า Environment Variable ใน Container
+#               environmentVariables: |
+#                 CONTAINER_APP_NAME: $(containerAppName)
               
-              # ตั้งค่าการให้สิทธิ์ Container App ดึง Image จาก ACR
-              acrName: $(acrLoginServer)
-              serviceConnectionAcr: $(azureSubscription)
+#               # ตั้งค่าการให้สิทธิ์ Container App ดึง Image จาก ACR
+#               acrName: $(acrLoginServer)
+#               serviceConnectionAcr: $(azureSubscription) # ใช้ AzureRM connection เพื่อตั้งค่าสิทธิ์การดึง Image
