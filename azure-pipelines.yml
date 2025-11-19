@@ -8,19 +8,19 @@ variables:
   # *** ต้องตั้งค่าตัวแปรเหล่านี้ใน Azure DevOps Pipeline UI ***
   
   # ชื่อ Connection Service ใน Azure DevOps ที่เชื่อมต่อกับ Azure Subscription
-  azureSubscription: 'Your Azure Service Connection Name' 
+  azureSubscription: 'ITALOT-DEV' 
   
   # ชื่อ Azure Container Registry (ACR) ของคุณ
-  acrName: 'youracrexample' 
+  acrName: 'acraz2003cahlab.azurecr.io' 
   
   # ชื่อ Resource Group ที่ Azure Container App อยู่
-  resourceGroup: 'rg-aca-dev' 
+  resourceGroup: 'lab-aca' 
   
   # ชื่อ Azure Container App ที่จะทำการ Deploy
-  containerAppName: 'my-flask-aca'
+  containerAppName: 'aca-az2003'
   
   # Image Name และ Tag ที่จะใช้ (ใช้ Build ID เป็น Tag)
-  imageRepository: 'aca-flask-sample'
+  imageRepository: 'hello-world'
   imageTag: '$(Build.BuildId)'
   
   # พอร์ตที่แอปพลิเคชันรันอยู่ภายใน Container (ตรงกับ EXPOSE ใน Dockerfile)
