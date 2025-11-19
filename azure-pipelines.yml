@@ -10,8 +10,12 @@ variables:
   # ชื่อ Connection Service ใน Azure DevOps ที่เชื่อมต่อกับ Azure Subscription
   azureSubscription: 'ITALOT-DEV' 
   
-  # ชื่อ Azure Container Registry (ACR) ของคุณ
-  acrName: 'acraz2003cahlab.azurecr.io' 
+  # 1. ชื่อ ACR (ใช้สำหรับตั้งชื่อ Service Connection ใน Docker@2)
+  # ต้องเป็นชื่อ Registry เท่านั้น เช่น acraz2003cahlab ไม่ใช่ Domain เต็ม
+  acrRegistryName: 'acraz2003cahlab' 
+  
+  # 2. ACR Login Server Domain (ใช้สำหรับสร้าง Image Path)
+  acrLoginServer: 'acraz2003cahlab.azurecr.io'
   
   # ชื่อ Resource Group ที่ Azure Container App อยู่
   resourceGroup: 'lab-aca' 
@@ -40,8 +44,8 @@ stages:
       displayName: 'Build and push the image to ACR'
       inputs:
         command: buildAndPush
-        # เชื่อมต่อกับ ACR โดยใช้ Service Connection
-        containerRegistry: $(acrName) 
+        # ใช้ชื่อ ACR Registry Name ที่ตรงกับชื่อ Docker Registry Service Connection ใน Azure DevOps
+        containerRegistry: $(acrRegistryName) 
         repository: $(imageRepository)
         tags: |
           $(imageTag)
@@ -97,8 +101,9 @@ stages:
               resourceGroup: $(resourceGroup)
               containerAppName: $(containerAppName)
               
-              # Image ที่ดึงมาจาก ACR
-              imageToDeploy: '$(acrName).azurecr.io/$(imageRepository):$(imageTag)'
+              # *** แก้ไขส่วนนี้ ***
+              # Image Path ที่ถูกต้อง (Full Domain/Repository:Tag)
+              imageToDeploy: '$(acrLoginServer)/$(imageRepository):$(imageTag)'
               
               # ตั้งค่า Target Port
               targetPort: $(containerAppTargetPort)
@@ -108,7 +113,7 @@ stages:
                 CONTAINER_APP_NAME: $(containerAppName)
                 
               # ตั้งค่าการเข้าถึง Registry โดยใช้ ACR
-              registryUsername: $(acrName) # ใช้ชื่อ ACR เป็น Username
+              registryUsername: $(acrRegistryName) # ใช้ชื่อ ACR เป็น Username
               registryPassword: '$(System.AccessToken)' # ใช้ Token ของ Service Connection (ต้องเปิดสิทธิ์)
               
               # ตั้งค่าการสร้าง Revision ใหม่ (แนะนำสำหรับ CI/CD)
