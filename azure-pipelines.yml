@@ -37,6 +37,8 @@ stages:
   - job: Build
     displayName: 'Docker Build and Push'
     pool:
+      # *** ปรับปรุง: ระบุชื่อ Pool และ Agent Image ***
+      name: Azure Pipelines # ใช้ Pool ที่ Microsoft จัดเตรียมให้
       vmImage: 'ubuntu-latest' # ใช้ Agent ที่เป็น Ubuntu
 
     steps:
@@ -75,6 +77,8 @@ stages:
     displayName: 'Deploy Container App'
     environment: 'ACA-Deployment' # ชื่อ Environment ที่คุณกำหนดใน Azure DevOps
     pool:
+      # *** ปรับปรุง: ระบุชื่อ Pool และ Agent Image ***
+      name: Azure Pipelines # ใช้ Pool ที่ Microsoft จัดเตรียมให้
       vmImage: 'ubuntu-latest'
 
     strategy:
@@ -101,7 +105,6 @@ stages:
               resourceGroup: $(resourceGroup)
               containerAppName: $(containerAppName)
               
-              # *** แก้ไขส่วนนี้ ***
               # Image Path ที่ถูกต้อง (Full Domain/Repository:Tag)
               imageToDeploy: '$(acrLoginServer)/$(imageRepository):$(imageTag)'
               
