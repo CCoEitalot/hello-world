@@ -1,5 +1,4 @@
 # azure-pipelines.yml
-# Pipeline สำหรับ Build และ Push Docker Image ไป ACR เท่านั้น (Build มาตรฐาน: amd64)
 
 trigger:
 - main 
