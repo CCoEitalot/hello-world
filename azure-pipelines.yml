@@ -88,7 +88,6 @@ stages:
               
           - script: |
               commitId=$(cat $(Pipeline.Workspace)/Manifest/$(commitIdFileName))
-              # *** แก้ไข: เพิ่ม .azurecr.io กลับเข้าไปใน fullImageName ***
               fullImageName="$(acrLoginServer).azurecr.io/$(imageRepository):$commitId"
               echo "##vso[task.setvariable variable=fullImageName]$fullImageName"
               echo "Deploying image: $fullImageName"
@@ -105,7 +104,7 @@ stages:
               imageToDeploy: $(fullImageName)
               targetPort: $(containerAppTargetPort)
               environmentVariables: |
-                CONTAINER_APP_NAME: $(containerAppName)
-                IMAGE_COMMIT_ID: $(commitShortHash)
+                CONTAINER_APP_NAME=$(containerAppName)
+                IMAGE_COMMIT_ID=$(commitShortHash)
               acrName: $(acrLoginServer) 
               serviceConnectionAcr: $(azureSubscription)
