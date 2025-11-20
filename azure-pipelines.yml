@@ -111,7 +111,7 @@ stages:
               acrName: $(acrLoginServer) 
               serviceConnectionAcr: $(azureSubscription)
 
-            - task: AzureCLI@2
+          - task: AzureCLI@2
             displayName: 'Force 100% Traffic to Latest Revision'
             inputs:
               azureSubscription: $(azureSubscription)
