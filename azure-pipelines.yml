@@ -1,14 +1,21 @@
 # azure-pipelines.yml
-# Pipeline สำหรับ Build และ Push Docker Image ไป ACR เท่านั้น
+# Pipeline สำหรับ Build และ Push Docker Image ไป ACR เท่านั้น (Build มาตรฐาน: amd64)
 
 trigger:
 - main # กำหนดให้รันเมื่อมีการ push ไปที่ branch main
 
 variables:
-  # ... ตัวแปรต่างๆ ยังคงเหมือนเดิม
+  # ชื่อ Service Connection หลัก (ชนิด: Azure Resource Manager) 
+  # ใช้เพื่อตรวจสอบสิทธิ์ทั่วไปและสิทธิ์ ACR Pull (ใน Task Docker@2)
   azureSubscription: 'azureSubscription' 
+  
+  # 1. ชื่อ Service Connection สำหรับ Docker Registry (ชนิด: Docker Registry)
   acrRegistryName: 'acr-lab-aca' 
+  
+  # 2. ACR Login Server Domain
   acrLoginServer: 'acraz2003cahlab.azurecr.io'
+  
+  # ชื่อ Repository และ Tag
   imageRepository: 'hello-world'
   imageTag: '$(Build.BuildId)'
   
@@ -19,47 +26,32 @@ variables:
 
 stages:
 - stage: BuildAndPush
-  displayName: 'Build and Push Docker Image to ACR (x86)'
+  displayName: 'Build and Push Docker Image to ACR (Standard)'
   jobs:
   - job: Build
-    displayName: 'Docker Build and Push x86'
+    displayName: 'Docker Build and Push'
     pool:
-      # *** ใช้ Agent Pool "Default" เพื่อหลีกเลี่ยงข้อจำกัด Parallelism ***
+      # *** ใช้ Agent Pool "Default" ***
       name: Default 
       
     steps:
     
-    # 1. Login to ACR (จำเป็นสำหรับ Push) - เปลี่ยนจาก AzurePowerShell@5 เป็น AzureCLI@2
-    - task: AzureCLI@2
-      displayName: 'Azure CLI Login to ACR'
-      inputs:
-        azureSubscription: $(azureSubscription)
-        scriptType: 'bash'
-        scriptLocation: 'inlineScript'
-        inlineScript: 'az acr login --name $(acrLoginServer)'
-        
+    # *** เปลี่ยนกลับไปใช้ buildAndPush เพื่อความกระชับ ***
     - task: Docker@2
-      displayName: 'Build Image for x86'
+      displayName: 'Build and push the image to ACR'
       inputs:
-        command: build
+        command: buildAndPush
+        # Service Connection สำหรับ Docker Registry (acr-lab-aca)
         containerRegistry: $(acrRegistryName) 
         repository: $(imageRepository)
         tags: |
-          $(imageTag)-x86
+          $(imageTag)
+          latest # แท็ก Image ล่าสุดด้วย 'latest'
         dockerfile: '$(Build.SourcesDirectory)/Dockerfile'
         buildContext: '$(Build.SourcesDirectory)'
-        # *** ระบุ Platform (x86) ***
-        arguments: '--platform linux/386'
+        # Service Connection สำหรับสิทธิ์ Azure ทั่วไป (AzureRM)
+        azureSubscription: $(azureSubscription)
         
-    - task: Docker@2
-      displayName: 'Push Image to ACR'
-      inputs:
-        command: push
-        containerRegistry: $(acrRegistryName) 
-        repository: $(imageRepository)
-        tags: |
-          $(imageTag)-x86
-          
     # Task สำหรับ Publish Image Tag เพื่อใช้ใน Stage Deploy (ถ้าจะใช้)
     - task: PublishPipelineArtifact@1
       displayName: 'Publish Image Tag Artifact'
@@ -67,7 +59,7 @@ stages:
         targetPath: '$(Build.SourcesDirectory)'
         artifact: 'Manifest'
         contents: |
-          $(imageRepository):$(imageTag)-x86
+          $(imageRepository):$(imageTag)
 
           
 # - stage: Deploy
