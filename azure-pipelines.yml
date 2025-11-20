@@ -119,7 +119,7 @@ stages:
               scriptLocation: 'inlineScript'
               inlineScript: |
                 echo "Attempting to retrieve the latest Revision Name..."
-                # ดึงชื่อ Revision ล่าสุดที่ถูกสร้างขึ้น (Revision 000008)
+                # ดึงชื่อ Revision ล่าสุดที่ถูกสร้างขึ้น
                 LATEST_REVISION=$(az containerapp revision list \
                   --name $(containerAppName) \
                   --resource-group $(resourceGroup) \
@@ -133,9 +133,8 @@ stages:
                   exit 1
                 fi
 
-                # กำหนด Traffic: ให้ Revision ล่าสุดรับ 100% และล้าง traffic เก่าทั้งหมด
                 echo "Setting 100% traffic to $LATEST_REVISION..."
-                az containerapp traffic set \
+                az containerapp **ingress** traffic set \
                   --name $(containerAppName) \
                   --resource-group $(resourceGroup) \
                   --revision-weight "$LATEST_REVISION=100"
