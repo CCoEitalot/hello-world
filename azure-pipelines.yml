@@ -46,7 +46,7 @@ stages:
         repository: $(imageRepository)
         tags: |
           $(imageTag)
-          latest # ลบ Comment ต่อท้ายบรรทัดนี้ออกอย่างถาวร
+          latest
         dockerfile: '$(Build.SourcesDirectory)/Dockerfile'
         buildContext: '$(Build.SourcesDirectory)'
         # Service Connection สำหรับสิทธิ์ Azure ทั่วไป (AzureRM)
