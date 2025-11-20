@@ -105,6 +105,7 @@ stages:
               location: $(deploymentLocation)
               imageToDeploy: $(fullImageName)
               targetPort: $(containerAppTargetPort)
+              latestRevision: true
               trafficWeight: 100
               environmentVariables: |
                 CONTAINER_APP_NAME=$(containerAppName)
