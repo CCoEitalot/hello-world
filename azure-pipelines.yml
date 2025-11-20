@@ -72,7 +72,7 @@ stages:
   jobs:
   - deployment: DeployContainerApp
     displayName: 'Deploy Container App: aca-az2003'
-    environment: managedEnvironment-aca-az2003
+    environment: ACA-Deployment
     
     pool:
       name: Default 
