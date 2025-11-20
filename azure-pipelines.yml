@@ -27,6 +27,8 @@ variables:
   # ชื่อไฟล์สำหรับ Artifact
   commitIdFileName: 'COMMIT_ID.txt' 
 
+  deploymentLocation: 'southeastasia'
+
 stages:
 - stage: BuildAndPush
   displayName: 'Build and Push Docker Image to ACR (Standard)'
@@ -101,6 +103,7 @@ stages:
               azureSubscription: $(azureSubscription) 
               resourceGroup: $(resourceGroup)
               containerAppName: $(containerAppName)
+              location: $(deploymentLocation)
               imageToDeploy: $(fullImageName)
               targetPort: $(containerAppTargetPort)
               environmentVariables: |
