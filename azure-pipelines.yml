@@ -119,20 +119,22 @@ stages:
               scriptLocation: 'inlineScript'
               inlineScript: |
                 echo "Attempting to retrieve the latest Revision Name..."
-                # ดึงชื่อ Revision ล่าสุดที่ถูกสร้างขึ้น
+                
+                # *** แก้ไข: เพิ่มการจัดเรียงตาม createdTime ใน Query ***
                 LATEST_REVISION=$(az containerapp revision list \
                   --name $(containerAppName) \
                   --resource-group $(resourceGroup) \
-                  --query "[0].name" \
+                  --query "sort_by(@, &properties.createdTime)[-1].name" \
                   --output tsv)
 
-                echo "Latest Revision Name: $LATEST_REVISION"
+                echo "Latest Revision Name Retrieved: $LATEST_REVISION"
 
                 if [ -z "$LATEST_REVISION" ]; then
                   echo "##[error]Could not find the latest revision name. Aborting traffic update."
                   exit 1
                 fi
 
+                # กำหนด Traffic: ให้ Revision ล่าสุดรับ 100%
                 echo "Setting 100% traffic to $LATEST_REVISION..."
                 az containerapp ingress traffic set \
                   --name $(containerAppName) \
