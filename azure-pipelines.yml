@@ -105,9 +105,9 @@ stages:
               location: $(deploymentLocation)
               imageToDeploy: $(fullImageName)
               targetPort: $(containerAppTargetPort)
-              environmentVariables: |
-                CONTAINER_APP_NAME=$(containerAppName)
-                IMAGE_COMMIT_ID=$(commitShortHash)
+              # environmentVariables: |
+              #   CONTAINER_APP_NAME=$(containerAppName)
+              #   IMAGE_COMMIT_ID=$(commitShortHash)
               acrName: $(acrLoginServer) 
               serviceConnectionAcr: $(azureSubscription)
 
