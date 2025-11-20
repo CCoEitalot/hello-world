@@ -105,9 +105,40 @@ stages:
               location: $(deploymentLocation)
               imageToDeploy: $(fullImageName)
               targetPort: $(containerAppTargetPort)
-              trafficTarget: 'latest=100'
               environmentVariables: |
                 CONTAINER_APP_NAME=$(containerAppName)
                 IMAGE_COMMIT_ID=$(commitShortHash)
               acrName: $(acrLoginServer) 
               serviceConnectionAcr: $(azureSubscription)
+
+            - task: AzureCLI@2
+            displayName: 'Force 100% Traffic to Latest Revision'
+            inputs:
+              azureSubscription: $(azureSubscription)
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                echo "Attempting to retrieve the latest Revision Name..."
+                # ดึงชื่อ Revision ล่าสุดที่ถูกสร้างขึ้น (Revision 000008)
+                LATEST_REVISION=$(az containerapp revision list \
+                  --name $(containerAppName) \
+                  --resource-group $(resourceGroup) \
+                  --query "[0].name" \
+                  --output tsv)
+
+                echo "Latest Revision Name: $LATEST_REVISION"
+
+                if [ -z "$LATEST_REVISION" ]; then
+                  echo "##[error]Could not find the latest revision name. Aborting traffic update."
+                  exit 1
+                fi
+
+                # กำหนด Traffic: ให้ Revision ล่าสุดรับ 100% และล้าง traffic เก่าทั้งหมด
+                echo "Setting 100% traffic to $LATEST_REVISION..."
+                az containerapp traffic set \
+                  --name $(containerAppName) \
+                  --resource-group $(resourceGroup) \
+                  --revision-weight "$LATEST_REVISION=100"
+                  
+            # Task นี้ควรใช้สิทธิ์ Azure Resource Manager
+            addSpnToEnvironment: true
