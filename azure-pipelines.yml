@@ -46,7 +46,7 @@ stages:
         repository: $(imageRepository)
         tags: |
           $(imageTag)
-          latest # แท็ก Image ล่าสุดด้วย 'latest'
+          latest # *** แก้ไข: ลบ Comment ต่อท้ายบรรทัดนี้ออก ***
         dockerfile: '$(Build.SourcesDirectory)/Dockerfile'
         buildContext: '$(Build.SourcesDirectory)'
         # Service Connection สำหรับสิทธิ์ Azure ทั่วไป (AzureRM)
@@ -61,7 +61,6 @@ stages:
         contents: |
           $(imageRepository):$(imageTag)
 
-          
 # - stage: Deploy
 #   displayName: 'Deploy to Azure Container Apps'
 #   dependsOn: BuildAndPush
