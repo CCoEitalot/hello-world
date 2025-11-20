@@ -140,5 +140,5 @@ stages:
                   --resource-group $(resourceGroup) \
                   --revision-weight "$LATEST_REVISION=100"
                   
-            # Task นี้ควรใช้สิทธิ์ Azure Resource Manager
-            addSpnToEnvironment: true
+          # Task นี้ควรใช้สิทธิ์ Azure Resource Manager
+          addSpnToEnvironment: true
