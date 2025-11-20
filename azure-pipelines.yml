@@ -134,7 +134,7 @@ stages:
                 fi
 
                 echo "Setting 100% traffic to $LATEST_REVISION..."
-                az containerapp **ingress** traffic set \
+                az containerapp ingress traffic set \
                   --name $(containerAppName) \
                   --resource-group $(resourceGroup) \
                   --revision-weight "$LATEST_REVISION=100"
