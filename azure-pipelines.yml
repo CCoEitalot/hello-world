@@ -105,6 +105,7 @@ stages:
               location: $(deploymentLocation)
               imageToDeploy: $(fullImageName)
               targetPort: $(containerAppTargetPort)
+              trafficWeight: 100
               environmentVariables: |
                 CONTAINER_APP_NAME=$(containerAppName)
                 IMAGE_COMMIT_ID=$(commitShortHash)
