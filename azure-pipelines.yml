@@ -1,66 +1,74 @@
 # azure-pipelines.yml
-# Pipeline สำหรับ Build, Push Docker Image ไป ACR, และ Deploy ไป Azure Container Apps
+# Pipeline สำหรับ Build และ Push Docker Image ไป ACR เท่านั้น
 
 trigger:
 - main # กำหนดให้รันเมื่อมีการ push ไปที่ branch main
 
 variables:
-  # *** IMPORTANT: ตัวแปรเหล่านี้ต้องถูกตั้งค่าใน Azure DevOps Pipeline UI ***
-  
-  # ชื่อ Service Connection หลัก (ชนิด: Azure Resource Manager)
-  # ใช้สำหรับให้สิทธิ์ Agent ในการ Login เข้า ACR และจัดการทรัพยากร ACA
+  # ... ตัวแปรต่างๆ ยังคงเหมือนเดิม
   azureSubscription: 'azureSubscription' 
-  
-  # 1. ชื่อ Service Connection สำหรับ Docker Registry (ชนิด: Docker Registry)
   acrRegistryName: 'acr-lab-aca' 
-  
-  # 2. ACR Login Server Domain
   acrLoginServer: 'acraz2003cahlab.azurecr.io'
-  
-  # Image Name และ Tag ที่จะใช้
   imageRepository: 'hello-world'
   imageTag: '$(Build.BuildId)'
   
-  # ตัวแปรสำหรับ Deploy
+  # ตัวแปร Deploy อื่นๆ ที่ไม่ใช้แล้ว แต่คงไว้เผื่อต้องการกลับมาใช้
   resourceGroup: 'lab-aca' 
   containerAppName: 'aca-az2003'
   containerAppTargetPort: '8080'
-  environmentName: 'ACA-Deployment' # ชื่อ Environment ที่คุณกำหนดใน Azure DevOps
 
 stages:
 - stage: BuildAndPush
-  displayName: 'Build and Push Docker Image to ACR'
+  displayName: 'Build and Push Docker Image to ACR (x86)'
   jobs:
   - job: Build
-    displayName: 'Docker Build and Push'
+    displayName: 'Docker Build and Push x86'
     pool:
-      name: Azure Pipelines 
-      vmImage: 'Default' 
-
+      # *** ใช้ Agent Pool "Default" เพื่อหลีกเลี่ยงข้อจำกัด Parallelism ***
+      name: Default 
+      
     steps:
-    - task: Docker@2
-      displayName: 'Build and push the image to ACR'
+    
+    # 1. Login to ACR (จำเป็นสำหรับ Push) - เปลี่ยนจาก AzurePowerShell@5 เป็น AzureCLI@2
+    - task: AzureCLI@2
+      displayName: 'Azure CLI Login to ACR'
       inputs:
-        command: buildAndPush
-        # Service Connection สำหรับ Docker Registry (acr-lab-aca) ใช้ในการระบุ Registry
+        azureSubscription: $(azureSubscription)
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: 'az acr login --name $(acrLoginServer)'
+        
+    - task: Docker@2
+      displayName: 'Build Image for x86'
+      inputs:
+        command: build
         containerRegistry: $(acrRegistryName) 
         repository: $(imageRepository)
         tags: |
-          $(imageTag)
-          latest
+          $(imageTag)-x86
         dockerfile: '$(Build.SourcesDirectory)/Dockerfile'
         buildContext: '$(Build.SourcesDirectory)'
-        # Service Connection สำหรับสิทธิ์ Azure ทั่วไป (AzureRM) ใช้ในการ Login
-        azureSubscription: $(azureSubscription)
-
-    # Task สำหรับ Publish Image Tag เพื่อใช้ใน Stage Deploy
+        # *** ระบุ Platform (x86) ***
+        arguments: '--platform linux/386'
+        
+    - task: Docker@2
+      displayName: 'Push Image to ACR'
+      inputs:
+        command: push
+        containerRegistry: $(acrRegistryName) 
+        repository: $(imageRepository)
+        tags: |
+          $(imageTag)-x86
+          
+    # Task สำหรับ Publish Image Tag เพื่อใช้ใน Stage Deploy (ถ้าจะใช้)
     - task: PublishPipelineArtifact@1
       displayName: 'Publish Image Tag Artifact'
       inputs:
         targetPath: '$(Build.SourcesDirectory)'
         artifact: 'Manifest'
         contents: |
-          $(imageRepository):$(imageTag)
+          $(imageRepository):$(imageTag)-x86
+
           
 # - stage: Deploy
 #   displayName: 'Deploy to Azure Container Apps'
