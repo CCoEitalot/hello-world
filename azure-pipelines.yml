@@ -6,7 +6,6 @@ trigger:
 
 variables:
   # ชื่อ Service Connection หลัก (ชนิด: Azure Resource Manager) 
-  # ใช้เพื่อตรวจสอบสิทธิ์ทั่วไปและสิทธิ์ ACR Pull (ใน Task Docker@2)
   azureSubscription: 'azureSubscription' 
   
   # 1. ชื่อ Service Connection สำหรับ Docker Registry (ชนิด: Docker Registry)
@@ -17,12 +16,19 @@ variables:
   
   # ชื่อ Repository และ Tag
   imageRepository: 'hello-world'
-  imageTag: '$(Build.BuildId)'
+  # ตัวแปรดั้งเดิม (ไม่ใช้แล้ว แต่คงไว้เผื่ออ้างอิง)
+  imageTag: '$(Build.BuildId)' 
   
-  # ตัวแปร Deploy อื่นๆ ที่ไม่ใช้แล้ว แต่คงไว้เผื่อต้องการกลับมาใช้
+  # *** NEW: ตัวแปรสำหรับ Commit ID 7 หลัก ***
+  commitShortHash: $[substring(variables['Build.SourceVersion'], 0, 7)]
+  
+  # ตัวแปร Deploy
   resourceGroup: 'lab-aca' 
-  containerAppName: 'aca-az2003'
+  containerAppName: 'aca-az2003' # Container App Name ตามที่ต้องการ
   containerAppTargetPort: '8080'
+  
+  # *** NEW: ชื่อไฟล์ที่จะใช้เก็บ Commit ID ***
+  commitIdFileName: 'COMMIT_ID.txt' 
 
 stages:
 - stage: BuildAndPush
@@ -31,86 +37,86 @@ stages:
   - job: Build
     displayName: 'Docker Build and Push'
     pool:
-      # *** ใช้ Agent Pool "Default" ***
+      # *** ใช้ Node Pool Default ตามต้องการ ***
       name: Default 
       
     steps:
     
-    # *** เปลี่ยนกลับไปใช้ buildAndPush เพื่อความกระชับ ***
+    # 0. สร้างไฟล์สำหรับเก็บ Commit ID ก่อน Publish Artifact
+    - script: |
+        # สร้างโฟลเดอร์สำหรับ Artifact
+        mkdir -p $(Pipeline.Workspace)/manifest
+        # เขียนค่า Commit ID ลงในไฟล์
+        echo "$(commitShortHash)" > $(Pipeline.Workspace)/manifest/$(commitIdFileName)
+      displayName: 'Create Commit ID File for Artifact'
+    
+    # 1. Build และ Push Image ไป ACR โดยใช้ Commit ID 7 หลักเป็น Tag
     - task: Docker@2
       displayName: 'Build and push the image to ACR'
       inputs:
         command: buildAndPush
-        # Service Connection สำหรับ Docker Registry (acr-lab-aca)
         containerRegistry: $(acrRegistryName) 
         repository: $(imageRepository)
         tags: |
-          $(imageTag)
+          $(commitShortHash)
           latest
         dockerfile: '$(Build.SourcesDirectory)/Dockerfile'
         buildContext: '$(Build.SourcesDirectory)'
-        # Service Connection สำหรับสิทธิ์ Azure ทั่วไป (AzureRM)
         azureSubscription: $(azureSubscription)
         
-    # Task สำหรับ Publish Image Tag เพื่อใช้ใน Stage Deploy (ถ้าจะใช้)
+    # 2. Publish Commit ID 7 หลัก เป็น Artifact เพื่อใช้ใน Stage Deploy
     - task: PublishPipelineArtifact@1
-      displayName: 'Publish Image Tag Artifact'
+      displayName: 'Publish Image Tag Artifact (Commit ID)'
       inputs:
-        targetPath: '$(Build.SourcesDirectory)'
+        targetPath: '$(Pipeline.Workspace)/manifest' 
         artifact: 'Manifest'
-        contents: |
-          $(imageRepository):$(imageTag)
 
-# - stage: Deploy
-#   displayName: 'Deploy to Azure Container Apps'
-#   dependsOn: BuildAndPush
-#   condition: succeeded()
-#   jobs:
-#   - deployment: DeployContainerApp
-#     displayName: 'Deploy Container App'
-#     environment: $(environmentName) # ใช้ Environment ที่กำหนด
-#     pool:
-#       name: Azure Pipelines 
-#       vmImage: 'Default'
+- stage: Deploy
+  displayName: 'Deploy to Azure Container Apps'
+  dependsOn: BuildAndPush
+  condition: succeeded()
+  jobs:
+  - deployment: DeployContainerApp
+    displayName: 'Deploy Container App: aca-az2003'
+    pool:
+      # *** ใช้ Node Pool Default ตามต้องการ ***
+      name: Default 
 
-#     strategy:
-#       runOnce:
-#         deploy:
-#           steps:
-#           # 1. Download Artifact ที่เก็บ Image Tag
-#           - task: DownloadPipelineArtifact@2
-#             displayName: 'Download Image Tag Artifact'
-#             inputs:
-#               artifact: 'Manifest'
-#               path: '$(Pipeline.Workspace)/Manifest'
-
-#           # 2. ตั้งค่า Full Image Name Variable
-#           - script: |
-#               # อ่าน Image Path/Tag จาก Artifact
-#               imageFullPath=$(cat $(Pipeline.Workspace)/Manifest/$(imageRepository):$(imageTag))
-#               echo "##vso[task.setvariable variable=fullImageName]$imageFullPath"
-#             displayName: 'Set Full Image Name Variable'
-
-#           # 3. Deploy ไป Azure Container App
-#           - task: AzureContainerApps@1
-#             displayName: 'Deploy Azure Container App'
-#             inputs:
-#               # Service Connection สำหรับสิทธิ์ Azure ทั่วไป (AzureRM)
-#               azureSubscription: $(azureSubscription) 
-#               resourceGroup: $(resourceGroup)
-#               containerAppName: $(containerAppName)
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: DownloadPipelineArtifact@2
+            displayName: 'Download Commit ID Artifact'
+            inputs:
+              artifact: 'Manifest'
               
-#               # Image Path ที่ถูกต้อง (Full Domain/Repository:Tag)
-#               imageToDeploy: '$(acrLoginServer)/$(imageRepository):$(imageTag)'
+          - script: |
+              # อ่านค่าจากไฟล์ COMMIT_ID.txt ที่ดาวน์โหลดมาในโฟลเดอร์ Manifest
+              commitId=$(cat $(Pipeline.Workspace)/Manifest/$(commitIdFileName))
+              fullImageName="$(acrLoginServer)/$(imageRepository):$commitId"
+              echo "##vso[task.setvariable variable=fullImageName]$fullImageName"
+              echo "Deploying image: $fullImageName"
+            displayName: 'Set Full Image Name Variable'
+            env:
+              commitIdFileName: $(commitIdFileName)
+            
+          - task: AzureContainerApps@1
+            displayName: 'Deploy Azure Container App'
+            inputs:
+              azureSubscription: $(azureSubscription) 
+              resourceGroup: $(resourceGroup)
+              containerAppName: $(containerAppName)
               
-#               # ตั้งค่า Target Port (ตามที่กำหนดใน Dockerfile)
-#               targetPort: $(containerAppTargetPort)
+              # Image Path ที่ถูกต้อง (Full Domain/Repository:Tag)
+              imageToDeploy: $(fullImageName)
               
-#               # ตั้งค่า Environment Variable ใน Container
-#               environmentVariables: |
-#                 CONTAINER_APP_NAME: $(containerAppName)
+              targetPort: $(containerAppTargetPort)
               
-#               # ตั้งค่าการให้สิทธิ์ Container App ดึง Image จาก ACR
-#               # ใช้ Service Connection ชนิด AzureRM เพื่อตั้งค่า ACR Pull Secret
-#               acrName: $(acrLoginServer)
-#               serviceConnectionAcr: $(azureSubscription)
+              # ตั้งค่า Environment Variable ใน Container
+              environmentVariables: |
+                CONTAINER_APP_NAME: $(containerAppName)
+                IMAGE_COMMIT_ID: $(commitShortHash)
+              
+              acrName: $(acrLoginServer)
+              serviceConnectionAcr: $(azureSubscription)
