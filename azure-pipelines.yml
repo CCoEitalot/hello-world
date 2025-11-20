@@ -35,7 +35,7 @@ stages:
     displayName: 'Docker Build and Push'
     pool:
       name: Azure Pipelines 
-      vmImage: 'ubuntu-latest' 
+      vmImage: 'Default' 
 
     steps:
     - task: Docker@2
@@ -72,7 +72,7 @@ stages:
 #     environment: $(environmentName) # ใช้ Environment ที่กำหนด
 #     pool:
 #       name: Azure Pipelines 
-#       vmImage: 'ubuntu-latest'
+#       vmImage: 'Default'
 
 #     strategy:
 #       runOnce:
