@@ -2,7 +2,7 @@
 # Pipeline สำหรับ Build และ Push Docker Image ไป ACR เท่านั้น (Build มาตรฐาน: amd64)
 
 trigger:
-- main # กำหนดให้รันเมื่อมีการ push ไปที่ branch main
+- main 
 
 variables:
   # ชื่อ Service Connection หลัก (ชนิด: Azure Resource Manager) 
@@ -16,18 +16,15 @@ variables:
   
   # ชื่อ Repository และ Tag
   imageRepository: 'hello-world'
-  # ตัวแปรดั้งเดิม (ไม่ใช้แล้ว แต่คงไว้เผื่ออ้างอิง)
   imageTag: '$(Build.BuildId)' 
-  
-  # *** NEW: ตัวแปรสำหรับ Commit ID 7 หลัก ***
   commitShortHash: $[substring(variables['Build.SourceVersion'], 0, 7)]
   
   # ตัวแปร Deploy
   resourceGroup: 'lab-aca' 
-  containerAppName: 'aca-az2003' # Container App Name ตามที่ต้องการ
+  containerAppName: 'aca-az2003' 
   containerAppTargetPort: '8080'
   
-  # *** NEW: ชื่อไฟล์ที่จะใช้เก็บ Commit ID ***
+  # ชื่อไฟล์สำหรับ Artifact
   commitIdFileName: 'COMMIT_ID.txt' 
 
 stages:
@@ -37,20 +34,17 @@ stages:
   - job: Build
     displayName: 'Docker Build and Push'
     pool:
-      # *** ใช้ Node Pool Default ตามต้องการ ***
       name: Default 
       
     steps:
     
     # 0. สร้างไฟล์สำหรับเก็บ Commit ID ก่อน Publish Artifact
     - script: |
-        # สร้างโฟลเดอร์สำหรับ Artifact
         mkdir -p $(Pipeline.Workspace)/manifest
-        # เขียนค่า Commit ID ลงในไฟล์
         echo "$(commitShortHash)" > $(Pipeline.Workspace)/manifest/$(commitIdFileName)
       displayName: 'Create Commit ID File for Artifact'
     
-    # 1. Build และ Push Image ไป ACR โดยใช้ Commit ID 7 หลักเป็น Tag
+    # 1. Build และ Push Image
     - task: Docker@2
       displayName: 'Build and push the image to ACR'
       inputs:
@@ -64,7 +58,7 @@ stages:
         buildContext: '$(Build.SourcesDirectory)'
         azureSubscription: $(azureSubscription)
         
-    # 2. Publish Commit ID 7 หลัก เป็น Artifact เพื่อใช้ใน Stage Deploy
+    # 2. Publish Commit ID เป็น Artifact
     - task: PublishPipelineArtifact@1
       displayName: 'Publish Image Tag Artifact (Commit ID)'
       inputs:
@@ -78,8 +72,9 @@ stages:
   jobs:
   - deployment: DeployContainerApp
     displayName: 'Deploy Container App: aca-az2003'
+    environment: managedEnvironment-aca-az2003
+    
     pool:
-      # *** ใช้ Node Pool Default ตามต้องการ ***
       name: Default 
 
     strategy:
@@ -92,7 +87,6 @@ stages:
               artifact: 'Manifest'
               
           - script: |
-              # อ่านค่าจากไฟล์ COMMIT_ID.txt ที่ดาวน์โหลดมาในโฟลเดอร์ Manifest
               commitId=$(cat $(Pipeline.Workspace)/Manifest/$(commitIdFileName))
               fullImageName="$(acrLoginServer)/$(imageRepository):$commitId"
               echo "##vso[task.setvariable variable=fullImageName]$fullImageName"
@@ -107,16 +101,10 @@ stages:
               azureSubscription: $(azureSubscription) 
               resourceGroup: $(resourceGroup)
               containerAppName: $(containerAppName)
-              
-              # Image Path ที่ถูกต้อง (Full Domain/Repository:Tag)
               imageToDeploy: $(fullImageName)
-              
               targetPort: $(containerAppTargetPort)
-              
-              # ตั้งค่า Environment Variable ใน Container
               environmentVariables: |
                 CONTAINER_APP_NAME: $(containerAppName)
                 IMAGE_COMMIT_ID: $(commitShortHash)
-              
               acrName: $(acrLoginServer)
               serviceConnectionAcr: $(azureSubscription)
